@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+
+        .meal-list-item {
+            cursor: pointer;
+        }
+
+        .favorite-meals {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-4 mb-4">Meal App</h1>
+
+        <!-- Home Page -->
+        <div>
+            <h2>Search Meals</h2>
+            <input type="text" id="searchInput" class="form-control mb-3" placeholder="Type to search meals">
+            
+            <ul id="searchResults" class="list-group">
+                <!-- Search results will be added here dynamically -->
+            </ul>
+        </div>
+
+        <!-- My Favourite Meals Page -->
+        <div class="favorite-meals">
+            <h2>My Favourite Meals</h2>
+            <ul id="favoriteMeals" class="list-group">
+                <!-- Favourite meals will be added here dynamically -->
+            </ul>
+        </div>
+
+        <!-- Meal Detail Page -->
+        <div id="mealDetail" style="display: none;">
+            <!-- Meal details will be added here dynamically -->
+            <button onclick="goBack()" class="btn btn-primary mt-3">Go Back</button>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const favoriteMealsList = document.getElementById('favoriteMeals');
+        const mealDetailPage = document.getElementById('mealDetail');
+
+        let favoriteMeals = JSON.parse(localStorage.getItem('favoriteMeals')) || [];
+
+        function searchMeals() {
+            const searchQuery = searchInput.value.trim();
+            if (searchQuery === '') {
+                clearSearchResults();
+                return;
+            }
+
+            fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${searchQuery}`)
+                .then(response => response.json())
+                .then(data => {
+                    displaySearchResults(data.meals);
+                })
+                .catch(error => console.error('Error fetching meals:', error));
+        }
+        // Function to fetch data from the API
+async function fetchData(searchTerm) {
+    const response = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${searchTerm}`);
+    const data = await response.json();
+    return data.meals;
+}
+
+        function displaySearchResults(meals) {
+            clearSearchResults();
+
+            meals.forEach(meal => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item meal-list-item';
+                li.textContent = meal.strMeal;
+                li.addEventListener('click', () => showMealDetailPage(meal));
+
+                const favoriteButton = document.createElement('button');
+                favoriteButton.className = 'btn btn-outline-primary btn-sm float-right';
+                favoriteButton.textContent = 'Add to Favourites';
+                favoriteButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    addToFavorites(meal);
+                });
+
+                li.appendChild(favoriteButton);
+                searchResults.appendChild(li);
+            });
+        }
+
+        function clearSearchResults() {
+            searchResults.innerHTML = '';
+        }
+
+        function showMealDetailPage(meal) {
+            mealDetailPage.style.display = 'block';
+            searchResults.style.display = 'none';
+
+            const detailContent = `
+                <h2>${meal.strMeal}</h2>
+                <img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="img-fluid mb-3">
+                <p><strong>Instructions:</strong> ${meal.strInstructions}</p>
+                <button onclick="goBack()" class="btn btn-primary">Go Back</button>
+            `;
+
+            mealDetailPage.innerHTML = detailContent;
+        }
+
+        function goBack() {
+            mealDetailPage.style.display = 'none';
+            searchResults.style.display = 'block';
+        }
+
+        function addToFavorites(meal) {
+            if (!favoriteMeals.some(favMeal => favMeal.idMeal === meal.idMeal)) {
+                favoriteMeals.push(meal);
+                updateFavoritesList();
+            }
+        }
+
+        function removeFromFavorites(mealId) {
+            favoriteMeals = favoriteMeals.filter(favMeal => favMeal.idMeal !== mealId);
+            updateFavoritesList();
+        }
+
+        function updateFavoritesList() {
+            localStorage.setItem('favoriteMeals', JSON.stringify(favoriteMeals));
+
+            favoriteMealsList.innerHTML = '';
+            favoriteMeals.forEach(meal => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = meal.strMeal;
+
+                const removeButton = document.createElement('button');
+                removeButton.className = 'btn btn-danger btn-sm float-right';
+                removeButton.textContent = 'Remove from Favourites';
+                removeButton.addEventListener('click', () => removeFromFavorites(meal.idMeal));
+
+                li.appendChild(removeButton);
+                favoriteMealsList.appendChild(li);
+            });
+        }
+
+        searchInput.addEventListener('input', searchMeals);
+    </script>
+</body>
+</html>
